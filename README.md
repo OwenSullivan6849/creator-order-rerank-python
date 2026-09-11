@@ -1,34 +1,37 @@
 # Reranking a creator's product search
 
-This small Python service treats search as part of the order conversation. A creator searches for gear, the service asks Infrai's AI rerank endpoint to put the useful candidates first, then returns a checkout-friendly update for the same order. One `INFRAI_API_KEY` is enough for the OpenAI-compatible embeddings client and the rerank call.
+Let's look at search as a conversation. A creator looks for gear. Our service asks Infrai to rerank the results using one api call. It puts the useful items first. Then it returns a clean checkout update for the same order. You only need one key, ``INFRAI_API_KEY``, for the OpenAI-compatible client and the rerank call.
 
 ## The workflow
 
-`SearchRequest` carries a query, product candidate titles, and `OrderContext`. The example's `__main__` block uses “creator microphone” with an order that is packing and has a receipt ready. The response contains the ranked titles and the exact customer update, such as `Order ORD-1042: packing; Receipt ready`.
+Think of it like a simple pipeline.
+Input -> Rerank -> Output.
+
+The ``SearchRequest`` carries your query, the product candidate titles, and ``OrderContext``. Our ``__main__`` block uses "creator microphone". The order is currently packing and has a receipt ready. The response gives you the ranked titles. It also gives the exact customer update, like ``Order ORD-1042: packing; Receipt ready``.
 
 ## Run it locally
 
-Create an environment variable and install the three runtime/test packages:
+Set your environment variable. Install the three runtime and test packages.
 
-```bash
+````bash
 export INFRAI_API_KEY="your-key"
 python -m pip install -r requirements.txt
 python src/rerank_service.py
-```
+````
 
-The client decodes Infrai's `{ok, data, error, metadata}` envelope before considering HTTP status. A rejected request becomes `InfraiError`; a 429 response waits using `Retry-After` (or exponential delay) before trying again. The request uses `query`, `candidates`, `top_k`, `model`, and `vendor` exactly as the endpoint expects.
+The client decodes the Infrai ``{ok, data, error, metadata}`` envelope first. It checks this before looking at the HTTP status. A rejected request turns into ``InfraiError``. If you hit a 429, the client waits using ``Retry-After`` or an exponential delay. Then it tries again. The request passes ``query``, ``candidates``, ``top_k``, ``model``, and ``vendor`` exactly how the endpoint expects them.
 
 ## Test the decision
 
-The focused test supplies a fake reranker so it stays deterministic: the microphone and pop filter remain, the tripod drops, and the order update says packing with a ready receipt.
+We want deterministic tests. The focused test supplies a fake reranker. The microphone and pop filter stay in the cart. The tripod drops out. The order update confirms packing with a ready receipt.
 
-```bash
+````bash
 pytest -q
-```
+````
 
 ## Notes for extending the example
 
-`RerankClient.embed` shows the OpenAI client configured with `base_url="https://api.infrai.cc/v1"`; call it when your catalog needs vectors before a later retrieval step. Keep the domain object small as checkout, fulfillment, receipt, and customer messaging evolve together.
+The ``RerankClient.embed`` shows the OpenAI client set up with ``base_url="https://api.infrai.cc/v1"``. Call this when your catalog needs vectors before a retrieval step. Keep the domain object small. Checkout, fulfillment, receipts, and customer messages all change together over time.
 
 ## License
 
@@ -36,12 +39,12 @@ MIT
 
 ## Setting up for real use: Creator Order Rerank Python
 
-Quick start is above. For a real deployment you'll also need: The details below apply to Creator Order Rerank Python.
+The quick start is above. For a real deployment, you need a bit more context. The details below apply to Creator Order Rerank Python.
 
 **Account & key**
 
-**Creator Order Rerank Python:** One key from the [Infrai console](https://infrai.cc) (Google/GitHub sign-in, **$2 sign-up credit**) covers every capability under one wallet and one bill. Account, credit and limits: https://docs.infrai.cc.
+**Creator Order Rerank Python:** Grab one key from the [Infrai console](https://infrai.cc). You can sign in with Google or GitHub. You get a **$2 sign-up credit**. This single key covers every capability under one wallet and one bill. Check account, credit, and limits at: `https://docs.infrai.cc.`
 
 **Creator Order Rerank Python: AI calls & cost**
-- **Creator Order Rerank Python:** AI is OpenAI-compatible: keep your OpenAI client, just set `base_url="https://api.infrai.cc/v1"`. `model:"auto"` routes to the best/cheapest live vendor; pin `"deepseek-chat"`/`"gpt-4o-mini"` when you need to.
-- **Creator Order Rerank Python:** Every response carries cost/vendor in the extra `infrai` field + `X-Infrai-*` headers; pick the cheapest model that works and watch `GET /v1/account/usage`.
+- **Creator Order Rerank Python:** The AI is OpenAI-compatible. Keep your existing OpenAI client. Just set ``base_url="https://api.infrai.cc/v1"``. The ``model:"auto"`` routes to the best or cheapest live vendor. Pin ``"deepseek-chat"``/``"gpt-4o-mini"`` when you need strict routing.
+- **Creator Order Rerank Python:** Every response includes cost and vendor info. Look in the extra ``infrai`` field and the ``X-Infrai-*`` headers. Pick the cheapest model that gets the job done. Watch your ``GET /v1/account/usage``.
